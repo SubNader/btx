@@ -17,9 +17,7 @@ use crate::palette::*;
 use body::render_body;
 use footer::render_footer;
 use header::{render_empty, render_error, render_header, render_loading};
-use popups::{
-    render_action_menu, render_confirm_popup, render_message_popup, render_working_popup,
-};
+use popups::{render_action_menu, render_confirm_popup, render_message_popup};
 
 pub fn ui(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
@@ -33,7 +31,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     ])
     .split(area);
 
-    render_header(frame, root[0], app.scanning, app.adapter_name.as_deref(), app.adapter_address.as_deref());
+    render_header(frame, root[0], app.scanning, &app.popup, app.adapter_name.as_deref(), app.adapter_address.as_deref());
 
     if app.loading {
         render_loading(frame, root[1]);
@@ -64,14 +62,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
                 render_confirm_popup(frame, area, &dev, action);
             }
         }
-        Popup::Working { device_idx, action } => {
-            let idx = *device_idx;
-            let action = *action;
-            if let Some(dev) = app.devices.get(idx) {
-                let dev = dev.clone();
-                render_working_popup(frame, area, &dev, action);
-            }
-        }
+        Popup::Working { .. } => {}
         Popup::Message { text, ok } => {
             let (text, ok) = (text.clone(), *ok);
             render_message_popup(frame, area, &text, ok);

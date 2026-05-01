@@ -1,8 +1,8 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Margin, Rect},
-    style::Style,
-    text::Line,
+    style::{Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -38,6 +38,9 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup, scanning: boo
             kb("↑↓/jk"), sep("select"), pad(),
             kb("Enter"), sep("run"), pad(),
             kb("Esc"), sep("back"),
+        ],
+        Popup::Working { .. } => vec![
+            Span::styled("  please wait…", Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC)),
         ],
         _ => vec![
             kb("y / Enter"), sep("confirm"), pad(),

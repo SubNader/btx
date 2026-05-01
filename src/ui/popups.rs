@@ -110,35 +110,6 @@ pub fn render_confirm_popup(frame: &mut Frame, area: Rect, dev: &BtDevice, actio
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-pub fn render_working_popup(frame: &mut Frame, area: Rect, dev: &BtDevice, action: DeviceAction) {
-    let popup_area = centered_rect(52, 7, area);
-    frame.render_widget(Clear, popup_area);
-
-    let accent = action.accent();
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(accent))
-        .style(Style::default().bg(PANEL_BG))
-        .title(Line::from(Span::styled(
-            format!("  {}  {}…  ", action.emoji(), action.label()),
-            Style::default().fg(accent).add_modifier(Modifier::BOLD),
-        )));
-    frame.render_widget(block, popup_area);
-
-    let inner = popup_area.inner(Margin { horizontal: 3, vertical: 1 });
-    let lines = Text::from(vec![
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(format!("{}  ", dev.emoji()), Style::default()),
-            Span::styled(dev.name.clone(), Style::default().fg(FG).add_modifier(Modifier::BOLD)),
-        ]),
-        Line::from(Span::styled("  please wait…", Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC))),
-    ]);
-    frame.render_widget(Paragraph::new(lines), inner);
-}
-
 pub fn render_message_popup(frame: &mut Frame, area: Rect, text: &str, ok: bool) {
     let popup_area = centered_rect(56, 7, area);
     frame.render_widget(Clear, popup_area);

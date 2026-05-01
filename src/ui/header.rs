@@ -6,12 +6,14 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Padding, Paragraph, Wrap},
 };
 
+use crate::model::Popup;
 use crate::palette::*;
 
 pub fn render_header(
     frame: &mut Frame,
     area: Rect,
     scanning: bool,
+    popup: &Popup,
     adapter_name: Option<&str>,
     adapter_address: Option<&str>,
 ) {
@@ -24,7 +26,12 @@ pub fn render_header(
 
     let inner = area.inner(Margin { horizontal: 2, vertical: 0 });
 
-    let scan_tag = if scanning {
+    let status_tag = if let Popup::Working { action, .. } = popup {
+        Span::styled(
+            format!("  {}  {}…", action.emoji(), action.label()),
+            Style::default().fg(action.accent()).add_modifier(Modifier::BOLD),
+        )
+    } else if scanning {
         Span::styled("  📡 scanning…", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD))
     } else {
         Span::raw("")
@@ -34,20 +41,27 @@ pub fn render_header(
         Span::styled("📶 ", Style::default()),
         Span::styled("btx", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
         Span::styled("  bluetooth manager", Style::default().fg(FG_DIM)),
-        scan_tag,
+        status_tag,
     ]);
 
-    let subtitle_line = match (adapter_name, adapter_address) {
-        (Some(name), Some(addr)) => Line::from(vec![
-            Span::styled("   ", Style::default()),
-            Span::styled(name, Style::default().fg(FG).add_modifier(Modifier::BOLD)),
-            Span::styled("  ", Style::default()),
-            Span::styled(addr, Style::default().fg(FG_DIM)),
-        ]),
-        _ => Line::from(Span::styled(
-            "   connect · pair · autoconnect · battery",
-            Style::default().fg(FG_DIM),
-        )),
+    let subtitle_line = if let Popup::Working { .. } = popup {
+        Line::from(Span::styled(
+            "   please wait…",
+            Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC),
+        ))
+    } else {
+        match (adapter_name, adapter_address) {
+            (Some(name), Some(addr)) => Line::from(vec![
+                Span::styled("   ", Style::default()),
+                Span::styled(name, Style::default().fg(FG).add_modifier(Modifier::BOLD)),
+                Span::styled("  ", Style::default()),
+                Span::styled(addr, Style::default().fg(FG_DIM)),
+            ]),
+            _ => Line::from(Span::styled(
+                "   connect · pair · autoconnect · battery",
+                Style::default().fg(FG_DIM),
+            )),
+        }
     };
 
     frame.render_widget(
