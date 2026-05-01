@@ -96,7 +96,7 @@ pub fn render_error(frame: &mut Frame, area: Rect, err: &str) {
         Line::from(Span::styled("  ✗  could not reach BlueZ", Style::default().fg(RED).add_modifier(Modifier::BOLD))),
         Line::from(Span::styled(format!("     {}", err), Style::default().fg(FG_DIM))),
         Line::from(""),
-        Line::from(Span::styled("     make sure bluetoothd is running and try  r  to refresh", Style::default().fg(FG_DIM))),
+        Line::from(Span::styled("     make sure bluetoothd is running and try  s  to scan", Style::default().fg(FG_DIM))),
     ]);
     frame.render_widget(
         Paragraph::new(text).block(Block::default().padding(Padding::vertical(2))).wrap(Wrap { trim: false }),

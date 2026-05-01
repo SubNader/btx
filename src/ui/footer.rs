@@ -23,15 +23,13 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup, scanning: boo
         Popup::None if scanning => vec![
             kb("↑↓/jk"), sep("navigate"), pad(),
             kb("Enter"), sep("actions"), pad(),
-            kb("r"), sep("refresh"), pad(),
-            kb("Esc"), sep("stop scan"), pad(),
+            kb("s"), sep("stop scan"), pad(),
             kb("q"), sep("quit"),
         ],
         Popup::None => vec![
             kb("↑↓/jk"), sep("navigate"), pad(),
             kb("Enter"), sep("actions"), pad(),
             kb("s"), sep("scan"), pad(),
-            kb("r"), sep("refresh"), pad(),
             kb("q"), sep("quit"),
         ],
         Popup::ActionMenu { .. } => vec![

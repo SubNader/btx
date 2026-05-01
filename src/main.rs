@@ -91,54 +91,30 @@ async fn main() -> Result<()> {
 
             match &app.popup {
                 Popup::None => match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Esc => {
+                    KeyCode::Esc | KeyCode::Char('q') => break,
+                    KeyCode::Up   | KeyCode::Char('k') => app.move_up(),
+                    KeyCode::Down | KeyCode::Char('j') => app.move_down(),
+
+                    KeyCode::Char('s') => {
                         if app.scanning {
                             if let Some(ref adapter) = app.adapter_path.clone() {
                                 let _ = stop_discovery(&conn, adapter).await;
                             }
                             app.scanning = false;
-                        } else {
-                            break;
-                        }
-                    }
-                    KeyCode::Up   | KeyCode::Char('k') => app.move_up(),
-                    KeyCode::Down | KeyCode::Char('j') => app.move_down(),
-
-                    KeyCode::Char('r') => {
-                        app.loading = true;
-                        app.error = None;
-                        terminal.draw(|f| ui(f, &mut app))?;
-                        match fetch_devices(&conn).await {
-                            Ok(devs) => {
-                                let old = app.list_state.selected().unwrap_or(0);
-                                app.devices = devs;
-                                app.loading = false;
-                                app.list_state.select(Some(old.min(app.devices.len().saturating_sub(1))));
-                            }
-                            Err(e) => { app.loading = false; app.error = Some(e.to_string()); }
-                        }
-                    }
-
-                    KeyCode::Char('s') => {
-                        if !app.scanning {
-                            if let Some(ref adapter) = app.adapter_path.clone() {
-                                match start_discovery(&conn, adapter).await {
-                                    Ok(()) => {
+                        } else if let Some(ref adapter) = app.adapter_path.clone() {
+                            match start_discovery(&conn, adapter).await {
+                                Ok(()) => { app.scanning = true; }
+                                Err(e) => {
+                                    let msg = e.to_string();
+                                    if msg.contains("Already") || msg.contains("InProgress") {
                                         app.scanning = true;
-                                    }
-                                    Err(e) => {
-                                        let msg = e.to_string();
-                                        if msg.contains("Already") || msg.contains("InProgress") {
-                                            app.scanning = true;
-                                        } else {
-                                            app.popup = Popup::Message { text: format!("scan failed: {e}"), ok: false };
-                                        }
+                                    } else {
+                                        app.popup = Popup::Message { text: format!("scan failed: {e}"), ok: false };
                                     }
                                 }
-                            } else {
-                                app.popup = Popup::Message { text: "no bluetooth adapter found".into(), ok: false };
                             }
+                        } else {
+                            app.popup = Popup::Message { text: "no bluetooth adapter found".into(), ok: false };
                         }
                     }
 
