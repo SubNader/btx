@@ -223,7 +223,7 @@ async fn main() -> Result<()> {
 
                                 app.popup = match result {
                                     Ok(msg)  => Popup::Message { text: msg, ok: true },
-                                    Err(e)   => Popup::Message { text: format!("error: {}", e), ok: false },
+                                    Err(e)   => Popup::Message { text: e.to_string(), ok: false },
                                 };
                             } else {
                                 app.popup = Popup::None;

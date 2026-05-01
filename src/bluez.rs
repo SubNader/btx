@@ -145,24 +145,60 @@ pub async fn set_trusted(conn: &Connection, path: &str, trusted: bool) -> Result
     Ok(())
 }
 
+fn bluez_err(e: zbus::Error) -> anyhow::Error {
+    let s = e.to_string();
+    let msg = if s.contains("AuthenticationFailed") || s.contains("Authentication failed") {
+        "authentication failed — wrong PIN or device rejected the request".to_string()
+    } else if s.contains("AuthenticationCanceled") {
+        "authentication cancelled".to_string()
+    } else if s.contains("AuthenticationRejected") {
+        "authentication rejected by device".to_string()
+    } else if s.contains("ConnectionAttemptFailed") {
+        "connection attempt failed — device may be out of range".to_string()
+    } else if s.contains("NotReady") {
+        "bluetooth adapter not ready".to_string()
+    } else if s.contains("AlreadyConnected") {
+        "already connected".to_string()
+    } else if s.contains("NotConnected") {
+        "not connected".to_string()
+    } else if s.contains("DoesNotExist") {
+        "device no longer available".to_string()
+    } else if s.contains("AlreadyExists") {
+        "already paired".to_string()
+    } else {
+        s
+    };
+    anyhow!(msg)
+}
+
 pub async fn connect_device(conn: &Connection, path: &str) -> Result<()> {
     let proxy = DeviceProxy::builder(conn).path(path)?.build().await?;
-    proxy.connect().await?;
+    proxy.connect().await.map_err(bluez_err)?;
     Ok(())
 }
 
 pub async fn disconnect_device(conn: &Connection, path: &str) -> Result<()> {
     let proxy = DeviceProxy::builder(conn).path(path)?.build().await?;
-    proxy.disconnect().await?;
+    proxy.disconnect().await.map_err(bluez_err)?;
     Ok(())
 }
 
 pub async fn pair_device(conn: &Connection, path: &str) -> Result<()> {
     let proxy = DeviceProxy::builder(conn).path(path)?.build().await?;
-    tokio::time::timeout(Duration::from_secs(30), proxy.pair())
-        .await
-        .map_err(|_| anyhow!("pairing timed out — make sure the device is in pairing mode"))?
-        .map_err(|e| anyhow!("{e}"))?;
+    let result = tokio::time::timeout(Duration::from_secs(30), proxy.pair()).await;
+    match result {
+        Err(_) => {
+            let _ = proxy.cancel_pairing().await;
+            anyhow::bail!("pairing timed out — make sure the device is in pairing mode");
+        }
+        Ok(Err(e)) => {
+            let err = bluez_err(e);
+            // cancel_pairing is best-effort; ignore its result
+            let _ = proxy.cancel_pairing().await;
+            return Err(err);
+        }
+        Ok(Ok(())) => {}
+    }
     Ok(())
 }
 
