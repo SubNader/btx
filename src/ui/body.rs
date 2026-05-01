@@ -27,7 +27,8 @@ pub fn render_body(frame: &mut Frame, area: Rect, app: &mut App) {
 }
 
 fn render_device_list(frame: &mut Frame, area: Rect, app: &mut App) {
-    let items: Vec<ListItem> = app.devices.iter().map(build_list_item).collect();
+    let scanning = app.scanning;
+    let items: Vec<ListItem> = app.devices.iter().map(|d| build_list_item(d, scanning)).collect();
 
     let list = List::new(items)
         .block(Block::default().padding(Padding::new(1, 1, 1, 0)))
@@ -38,15 +39,21 @@ fn render_device_list(frame: &mut Frame, area: Rect, app: &mut App) {
     frame.render_stateful_widget(list, area, &mut app.list_state);
 }
 
-fn build_list_item(d: &BtDevice) -> ListItem<'static> {
+fn build_list_item(d: &BtDevice, scanning: bool) -> ListItem<'static> {
+    let is_new = scanning && !d.paired;
+
     let conn_dot = if d.connected {
         Span::styled("● ", Style::default().fg(GREEN))
+    } else if is_new {
+        Span::styled("◈ ", Style::default().fg(PURPLE))
     } else {
         Span::styled("○ ", Style::default().fg(FG_DIM))
     };
 
     let name_style = if d.connected {
         Style::default().fg(FG).add_modifier(Modifier::BOLD)
+    } else if is_new {
+        Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(FG)
     };
@@ -54,12 +61,14 @@ fn build_list_item(d: &BtDevice) -> ListItem<'static> {
     let emoji = format!("{}  ", d.emoji());
     let name  = format!("{:<28}", truncate(&d.name, 28));
 
-    let (ac_label, ac_style) = if !d.paired {
-        ("  not paired ", Style::default().fg(FG_DIM).bg(ratatui::style::Color::Rgb(22, 22, 32)))
+    let (ac_label, ac_style) = if is_new {
+        ("  📡 in range  ", Style::default().fg(PURPLE).bg(ratatui::style::Color::Rgb(28, 15, 40)).add_modifier(Modifier::BOLD))
+    } else if !d.paired {
+        ("  not paired  ", Style::default().fg(FG_DIM).bg(ratatui::style::Color::Rgb(22, 22, 32)))
     } else if d.trusted {
-        ("  ✦ auto     ", Style::default().fg(GREEN).bg(ratatui::style::Color::Rgb(15, 40, 22)).add_modifier(Modifier::BOLD))
+        ("  ✦ auto      ", Style::default().fg(GREEN).bg(ratatui::style::Color::Rgb(15, 40, 22)).add_modifier(Modifier::BOLD))
     } else {
-        ("  · no auto  ", Style::default().fg(FG_DIM).bg(ratatui::style::Color::Rgb(22, 22, 32)))
+        ("  · no auto   ", Style::default().fg(FG_DIM).bg(ratatui::style::Color::Rgb(22, 22, 32)))
     };
 
     let batt_span = match d.battery {

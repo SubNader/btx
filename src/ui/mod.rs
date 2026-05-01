@@ -18,8 +18,7 @@ use body::render_body;
 use footer::render_footer;
 use header::{render_empty, render_error, render_header, render_loading};
 use popups::{
-    render_action_menu, render_confirm_popup, render_message_popup, render_scan_overlay,
-    render_working_popup,
+    render_action_menu, render_confirm_popup, render_message_popup, render_working_popup,
 };
 
 pub fn ui(frame: &mut Frame, app: &mut App) {
@@ -46,7 +45,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         render_body(frame, root[1], app);
     }
 
-    render_footer(frame, root[2], &app.popup);
+    render_footer(frame, root[2], &app.popup, app.scanning);
 
     match &app.popup {
         Popup::ActionMenu { device_idx, selected } => {
@@ -76,9 +75,6 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         Popup::Message { text, ok } => {
             let (text, ok) = (text.clone(), *ok);
             render_message_popup(frame, area, &text, ok);
-        }
-        Popup::Scanning => {
-            render_scan_overlay(frame, area, &app.devices);
         }
         Popup::None => {}
     }

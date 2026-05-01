@@ -150,7 +150,6 @@ pub enum Popup {
     Confirm { device_idx: usize, action: DeviceAction },
     Working { device_idx: usize, action: DeviceAction },
     Message { text: String, ok: bool },
-    Scanning,
 }
 
 pub struct App {

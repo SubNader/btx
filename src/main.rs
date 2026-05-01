@@ -47,14 +47,11 @@ async fn main() -> Result<()> {
         match start_discovery(&conn, &path).await {
             Ok(()) => {
                 app.scanning = true;
-                app.popup = Popup::Scanning;
             }
             Err(e) => {
                 let msg = e.to_string();
-                // "Already discovering" means scan is already running — treat as success
                 if msg.contains("Already") || msg.contains("InProgress") {
                     app.scanning = true;
-                    app.popup = Popup::Scanning;
                 }
                 // Any other error: silently skip auto-scan; user can still press 's' manually
             }
@@ -83,7 +80,17 @@ async fn main() -> Result<()> {
 
             match &app.popup {
                 Popup::None => match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
+                    KeyCode::Char('q') => break,
+                    KeyCode::Esc => {
+                        if app.scanning {
+                            if let Some(ref adapter) = app.adapter_path.clone() {
+                                let _ = stop_discovery(&conn, adapter).await;
+                            }
+                            app.scanning = false;
+                        } else {
+                            break;
+                        }
+                    }
                     KeyCode::Up   | KeyCode::Char('k') => app.move_up(),
                     KeyCode::Down | KeyCode::Char('j') => app.move_down(),
 
@@ -103,26 +110,24 @@ async fn main() -> Result<()> {
                     }
 
                     KeyCode::Char('s') => {
-                        if app.scanning {
-                            app.popup = Popup::Scanning;
-                        } else if let Some(ref adapter) = app.adapter_path.clone() {
-                            match start_discovery(&conn, adapter).await {
-                                Ok(()) => {
-                                    app.scanning = true;
-                                    app.popup = Popup::Scanning;
-                                }
-                                Err(e) => {
-                                    let msg = e.to_string();
-                                    if msg.contains("Already") || msg.contains("InProgress") {
+                        if !app.scanning {
+                            if let Some(ref adapter) = app.adapter_path.clone() {
+                                match start_discovery(&conn, adapter).await {
+                                    Ok(()) => {
                                         app.scanning = true;
-                                        app.popup = Popup::Scanning;
-                                    } else {
-                                        app.popup = Popup::Message { text: format!("scan failed: {e}"), ok: false };
+                                    }
+                                    Err(e) => {
+                                        let msg = e.to_string();
+                                        if msg.contains("Already") || msg.contains("InProgress") {
+                                            app.scanning = true;
+                                        } else {
+                                            app.popup = Popup::Message { text: format!("scan failed: {e}"), ok: false };
+                                        }
                                     }
                                 }
+                            } else {
+                                app.popup = Popup::Message { text: "no bluetooth adapter found".into(), ok: false };
                             }
-                        } else {
-                            app.popup = Popup::Message { text: "no bluetooth adapter found".into(), ok: false };
                         }
                     }
 
@@ -226,30 +231,6 @@ async fn main() -> Result<()> {
                         }
                         KeyCode::Char('n') | KeyCode::Esc => {
                             app.popup = Popup::None;
-                        }
-                        _ => {}
-                    }
-                }
-
-                Popup::Scanning => {
-                    let unpaired_count = app.devices.iter().filter(|d| !d.paired).count();
-                    match key.code {
-                        KeyCode::Esc | KeyCode::Char('q') => {
-                            if let Some(ref adapter) = app.adapter_path.clone() {
-                                let _ = stop_discovery(&conn, adapter).await;
-                            }
-                            app.scanning = false;
-                            app.popup = Popup::None;
-                        }
-                        KeyCode::Enter | KeyCode::Char(' ') if unpaired_count > 0 => {
-                            if let Some(idx) = app.devices.iter().position(|d| !d.paired) {
-                                if let Some(ref adapter) = app.adapter_path.clone() {
-                                    let _ = stop_discovery(&conn, adapter).await;
-                                }
-                                app.scanning = false;
-                                app.list_state.select(Some(idx));
-                                app.popup = Popup::Confirm { device_idx: idx, action: DeviceAction::Pair };
-                            }
                         }
                         _ => {}
                     }

@@ -10,7 +10,7 @@ use crate::model::Popup;
 use crate::palette::*;
 use crate::ui::{kb, sep, pad};
 
-pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup) {
+pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup, scanning: bool) {
     let block = Block::default()
         .borders(Borders::TOP)
         .border_style(Style::default().fg(BLUE_DIM))
@@ -20,6 +20,13 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup) {
     let inner = area.inner(Margin { horizontal: 2, vertical: 0 });
 
     let spans = match popup {
+        Popup::None if scanning => vec![
+            kb("↑↓/jk"), sep("navigate"), pad(),
+            kb("Enter"), sep("actions"), pad(),
+            kb("r"), sep("refresh"), pad(),
+            kb("Esc"), sep("stop scan"), pad(),
+            kb("q"), sep("quit"),
+        ],
         Popup::None => vec![
             kb("↑↓/jk"), sep("navigate"), pad(),
             kb("Enter"), sep("actions"), pad(),
@@ -31,11 +38,6 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup) {
             kb("↑↓/jk"), sep("select"), pad(),
             kb("Enter"), sep("run"), pad(),
             kb("Esc"), sep("back"),
-        ],
-        Popup::Scanning => vec![
-            kb("↑↓/jk"), sep("select"), pad(),
-            kb("Enter"), sep("pair"), pad(),
-            kb("Esc"), sep("stop scan"),
         ],
         _ => vec![
             kb("y / Enter"), sep("confirm"), pad(),
