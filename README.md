@@ -7,8 +7,10 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)](https://github.com/SubNader/btx)
 
 ```
-┌─ 📶 btx  bluetooth manager ──────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 📶 btx  bluetooth manager                                                 │
 │   Intel Bluetooth   A0:B1:C2:D3:E4:F5                                    │
+├───────────────────────────────────────────────────────────────────────────┤
 │                                                                           │
 │ ▌ ●  🎧  Galaxy Buds+ (E5CF)           + auto      🔋84%                 │
 │   ●  ⌨️   Keychron K3                   + auto      🔋61%                 │
