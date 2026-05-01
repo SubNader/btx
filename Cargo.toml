@@ -1,0 +1,19 @@
+[package]
+name = "btx"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "btx"
+path = "src/main.rs"
+
+[[bin]]
+name = "btx-connect"
+path = "src/connect.rs"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
