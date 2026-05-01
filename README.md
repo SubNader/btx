@@ -7,15 +7,17 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)](https://github.com/SubNader/btx)
 
 ```
-  📶 btx  bluetooth manager
-     Intel Bluetooth  A0:B1:C2:D3:E4:F5
-
- ▌ ●  🎧  Galaxy Buds+ (E5CF)      ✦ auto    🔋 84%
-   ●  ⌨️  Keychron K3               ✦ auto    🔋 61%
-   ○  📱  iPhone                    · no auto
-   ○  🖱️  MX Master 3               · no auto
-
-     ↑↓/jk navigate  Enter actions  s scan  q quit
+┌─ 📶 btx  bluetooth manager ──────────────────────────┐
+│    Intel Bluetooth  A0:B1:C2:D3:E4:F5                │
+│                                                      │
+│ ▌ ●  🎧 Galaxy Buds+ (E5CF)   ✦ auto   🔋 84%       │
+│   ●  ⌨️ Keychron K3            ✦ auto   🔋 61%       │
+│   ○  📱 iPhone                 · no auto             │
+│   ○  🖱️ MX Master 3            · no auto             │
+│                                                      │
+├──────────────────────────────────────────────────────┤
+│  ↑↓/jk navigate  Enter actions  s scan  q quit      │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## Features
