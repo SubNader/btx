@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Margin, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -57,8 +57,22 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup, scanning: boo
         ],
     };
 
+    let row = Rect { y: inner.y + 1, height: 1, ..inner };
+    let [keybinds_area, version_area] = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(0), Constraint::Length(10)])
+        .areas(row);
+
     frame.render_widget(
         Paragraph::new(Line::from(spans)).alignment(Alignment::Center),
-        Rect { y: inner.y + 1, height: 1, ..inner },
+        keybinds_area,
+    );
+
+    let version = format!("v{}", env!("CARGO_PKG_VERSION"));
+    frame.render_widget(
+        Paragraph::new(version)
+            .alignment(Alignment::Right)
+            .style(Style::default().fg(FG_DIM)),
+        version_area,
     );
 }
