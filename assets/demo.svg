@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="310" viewBox="0 0 660 310">
+  <defs>
+    <style>
+      .mono { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace; font-size: 13.5px; }
+      .bold { font-weight: bold; }
+    </style>
+    <clipPath id="outer">
+      <rect width="660" height="310" rx="10" ry="10"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#outer)">
+
+    <!-- panel background -->
+    <rect width="660" height="310" fill="#0c121e"/>
+
+    <!-- ── HEADER ── -->
+    <rect x="0" y="0" width="660" height="88" fill="#121e32"/>
+    <line x1="0" y1="88" x2="660" y2="88" stroke="#325a8c" stroke-width="1"/>
+
+    <!-- title row -->
+    <text class="mono bold" x="22" y="36" fill="#5294e2">btx</text>
+    <text class="mono" x="60" y="36" fill="#6e7888">bluetooth manager</text>
+
+    <!-- subtitle row -->
+    <text class="mono bold" x="22" y="64" fill="#dce1eb">Intel Bluetooth 9560</text>
+    <text class="mono" x="208" y="64" fill="#6e7888">  A0:B1:C2:D3:E4:F5</text>
+
+    <!-- ── ROW 1: Galaxy Buds+ — selected, connected, trusted ── -->
+    <rect x="0" y="89" width="660" height="34" fill="#1c304e"/>
+    <!-- selection bar -->
+    <rect x="0" y="89" width="4" height="34" fill="#5294e2"/>
+    <!-- status dot -->
+    <text class="mono" x="18" y="113" fill="#50c878">●</text>
+    <!-- device type icon -->
+    <text class="mono" x="40" y="113" fill="#5294e2">🎧</text>
+    <!-- name -->
+    <text class="mono bold" x="74" y="113" fill="#dce1eb">Galaxy Buds+</text>
+    <!-- autoconnect badge -->
+    <rect x="358" y="95" width="92" height="22" rx="3" fill="#0f2816"/>
+    <text class="mono bold" x="372" y="113" fill="#50c878">✦  auto</text>
+    <!-- battery -->
+    <text class="mono" x="462" y="113" fill="#50c878">🔋 84%</text>
+
+    <!-- ── ROW 2: Keychron K3 — connected, trusted ── -->
+    <rect x="0" y="123" width="660" height="34" fill="#0c121e"/>
+    <text class="mono" x="18" y="147" fill="#50c878">●</text>
+    <text class="mono" x="40" y="147" fill="#5294e2">⌨️</text>
+    <text class="mono" x="74" y="147" fill="#dce1eb">Keychron K3</text>
+    <rect x="358" y="129" width="92" height="22" rx="3" fill="#0f2816"/>
+    <text class="mono bold" x="372" y="147" fill="#50c878">✦  auto</text>
+    <text class="mono" x="462" y="147" fill="#50c878">🔋 61%</text>
+
+    <!-- ── ROW 3: iPhone 15 Pro — disconnected, not trusted ── -->
+    <rect x="0" y="157" width="660" height="34" fill="#0c121e"/>
+    <text class="mono" x="18" y="181" fill="#6e7888">○</text>
+    <text class="mono" x="40" y="181" fill="#5294e2">📱</text>
+    <text class="mono" x="74" y="181" fill="#dce1eb">iPhone 15 Pro</text>
+    <rect x="358" y="163" width="92" height="22" rx="3" fill="#161620"/>
+    <text class="mono" x="372" y="181" fill="#6e7888">·  no auto</text>
+
+    <!-- ── ROW 4: MX Master 3 — disconnected, low battery ── -->
+    <rect x="0" y="191" width="660" height="34" fill="#0c121e"/>
+    <text class="mono" x="18" y="215" fill="#6e7888">○</text>
+    <text class="mono" x="40" y="215" fill="#5294e2">🖱️</text>
+    <text class="mono" x="74" y="215" fill="#dce1eb">MX Master 3</text>
+    <rect x="358" y="197" width="92" height="22" rx="3" fill="#161620"/>
+    <text class="mono" x="372" y="215" fill="#6e7888">·  no auto</text>
+    <text class="mono" x="462" y="215" fill="#dc5050">🪫 23%</text>
+
+    <!-- ── ROW 5: JBL Clip 4 — disconnected, not trusted ── -->
+    <rect x="0" y="225" width="660" height="34" fill="#0c121e"/>
+    <text class="mono" x="18" y="249" fill="#6e7888">○</text>
+    <text class="mono" x="40" y="249" fill="#5294e2">🔊</text>
+    <text class="mono" x="74" y="249" fill="#dce1eb">JBL Clip 4</text>
+    <rect x="358" y="231" width="92" height="22" rx="3" fill="#161620"/>
+    <text class="mono" x="372" y="249" fill="#6e7888">·  no auto</text>
+
+    <!-- ── FOOTER ── -->
+    <rect x="0" y="259" width="660" height="51" fill="#121e32"/>
+    <line x1="0" y1="259" x2="660" y2="259" stroke="#325a8c" stroke-width="1"/>
+
+    <!-- key: ↑↓/jk -->
+    <rect x="60"  y="271" width="68" height="20" rx="3" fill="#5294e2"/>
+    <text class="mono bold" x="66"  y="286" fill="#121e32"> ↑↓/jk </text>
+    <text class="mono"      x="131" y="286" fill="#6e7888">  navigate</text>
+
+    <!-- key: Enter -->
+    <rect x="241" y="271" width="54" height="20" rx="3" fill="#5294e2"/>
+    <text class="mono bold" x="246" y="286" fill="#121e32"> Enter </text>
+    <text class="mono"      x="298" y="286" fill="#6e7888">  actions</text>
+
+    <!-- key: s -->
+    <rect x="375" y="271" width="22" height="20" rx="3" fill="#5294e2"/>
+    <text class="mono bold" x="377" y="286" fill="#121e32"> s </text>
+    <text class="mono"      x="400" y="286" fill="#6e7888">  scan</text>
+
+    <!-- key: r -->
+    <rect x="450" y="271" width="22" height="20" rx="3" fill="#5294e2"/>
+    <text class="mono bold" x="452" y="286" fill="#121e32"> r </text>
+    <text class="mono"      x="475" y="286" fill="#6e7888">  refresh</text>
+
+    <!-- key: q -->
+    <rect x="546" y="271" width="22" height="20" rx="3" fill="#5294e2"/>
+    <text class="mono bold" x="548" y="286" fill="#121e32"> q </text>
+    <text class="mono"      x="571" y="286" fill="#6e7888">  quit</text>
+
+  </g>
+
+  <!-- outer border on top -->
+  <rect x="0.75" y="0.75" width="658.5" height="308.5" rx="10" ry="10" fill="none" stroke="#325a8c" stroke-width="1.5"/>
+</svg>

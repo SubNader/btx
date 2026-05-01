@@ -6,19 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)](https://github.com/SubNader/btx)
 
-```
-┌─ 📶 btx  bluetooth manager ────────────────────────────┐
-│    Intel Bluetooth  A0:B1:C2:D3:E4:F5                  │
-│                                                        │
-│ ▌ ●  🎧 Galaxy Buds+        ✦ auto         🔋 84%      │
-│   ●  ⌨️ Keychron K3         ✦ auto         🔋 61%      │
-│   ○  📱 iPhone              · no auto                  │
-│   ○  🖱️ MX Master 3         · no auto                  │
-│                                                        │
-├────────────────────────────────────────────────────────┤
-│  ↑↓/jk navigate  Enter actions  s scan  q quit         │
-└────────────────────────────────────────────────────────┘
-```
+<img src="assets/demo.svg" alt="btx demo" width="660"/>
 
 ## Features
 
@@ -30,7 +18,13 @@
 
 ## Install
 
-**From a release `.deb`** (recommended):
+```sh
+curl -fsSL https://github.com/SubNader/btx/releases/latest/download/install.sh | sh
+```
+
+Installs `btx` and `btx-connect` to `~/.local/bin` and enables the startup service. Supports x86\_64 and aarch64.
+
+**From a release `.deb`** (system-wide):
 
 ```sh
 curl -LO https://github.com/SubNader/btx/releases/latest/download/btx_<version>_amd64.deb
@@ -53,25 +47,39 @@ Requires: Rust toolchain, `bluetoothd` running, D-Bus system bus access.
 btx
 ```
 
+The TUI opens immediately and loads all known Bluetooth devices. The adapter name and address are shown in the header. Each row shows the device icon, connection state (`●` connected / `○` disconnected), name, autoconnect status, signal bars, and battery level where available.
+
 ### Keys
 
 | Key | Action |
 |-----|--------|
-| `↑` `↓` / `j` `k` | Navigate devices |
-| `Enter` | Open action menu |
+| `↑` `↓` / `j` `k` | Navigate the device list |
+| `Enter` / `Space` | Open the action menu for the selected device |
 | `s` | Scan for nearby devices |
-| `r` | Refresh |
-| `q` / `Esc` | Quit |
+| `r` | Refresh the device list |
+| `q` / `Esc` | Quit (or close the current popup) |
 
 ### Action menu
 
-| Action | Description |
-|--------|-------------|
-| 🔗 Connect | Connect the selected device |
-| ⏏️ Disconnect | Disconnect the selected device |
-| 🤝 Pair | Pair a new device (put it in pairing mode first) |
-| ✦ Toggle autoconnect | Mark/unmark as trusted for startup reconnect |
-| 🗑️ Remove / unpair | Remove device — must re-pair to use again |
+Press `Enter` or `Space` on any device to open its action menu. Available actions depend on device state:
+
+| Action | When available | Description |
+|--------|---------------|-------------|
+| 🔗 Connect | Paired, disconnected | Connect the device |
+| ⏏️ Disconnect | Paired, connected | Disconnect the device |
+| 🤝 Pair | Not yet paired | Pair a new device |
+| ✦ Toggle autoconnect | Paired | Mark/unmark as trusted for startup reconnect |
+| 🗑️ Remove / unpair | Paired | Forget the device — must re-pair to use again |
+
+All actions show a confirmation prompt (`y` / `Enter` to confirm, `n` / `Esc` to cancel).
+
+### Pairing a new device
+
+1. Put the device into pairing mode.
+2. Press `s` in btx to start scanning — nearby unpaired devices appear in the list as they are discovered.
+3. Navigate to the device and press `Enter` → **Pair**.
+4. After pairing, optionally press `Enter` → **Toggle autoconnect** so it reconnects at every login.
+5. Press `Esc` or `q` to stop scanning.
 
 ## Startup connect
 
