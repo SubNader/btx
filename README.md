@@ -1,31 +1,52 @@
 # btx
 
-Terminal UI for managing Bluetooth devices on Linux via BlueZ.
+> Terminal Bluetooth manager for Linux — connect, pair, and manage devices from the keyboard.
 
-![btx screenshot placeholder](https://via.placeholder.com/800x400?text=btx)
+[![Release](https://img.shields.io/github/v/release/SubNader/btx)](https://github.com/SubNader/btx/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#)
+[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)](https://github.com/SubNader/btx)
+
+```
+╭─ 📶 btx  bluetooth manager ──────────────────────────────────────────────╮
+│   Intel Bluetooth   A0:B1:C2:D3:E4:F5                                    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│ ▌ ●  🎧  Galaxy Buds+ (E5CF)           ✦ auto      🔋84%                 │
+│   ●  ⌨️   Keychron K3                   ✦ auto      🔋61%                 │
+│   ○  📱  iPhone                         · no auto                        │
+│   ○  🖱️   MX Master 3                   · no auto                        │
+│                                                                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│          ↑↓/jk  navigate    Enter  actions    s  scan    q  quit          │
+╰───────────────────────────────────────────────────────────────────────────╯
+```
 
 ## Features
 
-- Connect, disconnect, and pair devices
-- Toggle trusted (autoconnect) per device
-- Battery level display
-- Signal strength indicator
-- Scan for nearby devices
-- `btx-connect` — headless startup connector for trusted devices
-
-## Requirements
-
-- Linux with BlueZ (`bluetoothd` running)
-- Rust toolchain (`cargo`)
-- D-Bus system bus access
+- **Connect / disconnect / pair** devices interactively
+- **Toggle autoconnect** — mark devices as trusted; they reconnect at every login
+- **Battery level** and **signal strength** display
+- **Scan** for nearby unpaired devices
+- **`btx-connect`** — headless startup service that connects all trusted devices automatically
 
 ## Install
 
+**From a release `.deb`** (recommended):
+
 ```sh
+curl -LO https://github.com/SubNader/btx/releases/latest/download/btx_<version>_amd64.deb
+sudo dpkg -i btx_<version>_amd64.deb
+```
+
+**From source:**
+
+```sh
+git clone https://github.com/SubNader/btx
+cd btx
 ./setup.sh
 ```
 
-This builds both binaries, installs them to `~/.local/bin`, and enables the `btx-connect` startup service.
+Requires: Rust toolchain, `bluetoothd` running, D-Bus system bus access.
 
 ## Usage
 
@@ -33,37 +54,44 @@ This builds both binaries, installs them to `~/.local/bin`, and enables the `btx
 btx
 ```
 
-| Key        | Action                        |
-|------------|-------------------------------|
-| `↑↓` / `jk` | Navigate devices             |
-| `Enter`    | Open action menu              |
-| `s`        | Scan for nearby devices       |
-| `r`        | Refresh device list           |
-| `q` / `Esc`| Quit                          |
+### Keys
+
+| Key | Action |
+|-----|--------|
+| `↑` `↓` / `j` `k` | Navigate devices |
+| `Enter` | Open action menu |
+| `s` | Scan for nearby devices |
+| `r` | Refresh |
+| `q` / `Esc` | Quit |
 
 ### Action menu
 
-| Action            | Description                                      |
-|-------------------|--------------------------------------------------|
-| Connect           | Connect to the selected device                   |
-| Disconnect        | Disconnect the selected device                   |
-| Pair              | Initiate pairing (device must be in pairing mode)|
-| Toggle autoconnect| Mark/unmark device as trusted for startup connect|
-| Remove / unpair   | Remove device (must re-pair to use again)        |
+| Action | Description |
+|--------|-------------|
+| 🔗 Connect | Connect the selected device |
+| ⏏️ Disconnect | Disconnect the selected device |
+| 🤝 Pair | Pair a new device (put it in pairing mode first) |
+| ✦ Toggle autoconnect | Mark/unmark as trusted for startup reconnect |
+| 🗑️ Remove / unpair | Remove device — must re-pair to use again |
 
 ## Startup connect
 
-`btx-connect` runs at login via a systemd user service. It connects all paired + trusted devices automatically.
+`btx-connect` runs at login as a systemd user service and connects all trusted devices automatically.
+
+```
+● btx-connect: connecting Galaxy Buds+ (E5CF) (34:82:C5:D4:E5:CF) … ok
+● btx-connect: connecting Keychron K3 (AA:BB:CC:DD:EE:FF) … ok
+```
 
 ```sh
-# Check last run
+# Check logs
 journalctl --user -u btx-connect.service
 
 # Disable
 systemctl --user disable btx-connect.service
 ```
 
-Devices are marked trusted from within `btx` using the **Toggle autoconnect** action.
+Mark a device as trusted from within `btx` using **Toggle autoconnect**.
 
 ## Uninstall
 
