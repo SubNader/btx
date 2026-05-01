@@ -42,8 +42,7 @@ jobs:
 
       - name: Read version
         id: version
-        run: |
-          echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')" >> "$GITHUB_OUTPUT"
 
       - name: Package .deb
         run: |
@@ -53,54 +52,23 @@ jobs:
           TARGET=${{ matrix.target }}
           PKG="btx_${VERSION}_${ARCH}"
 
-          mkdir -p "$PKG/usr/local/bin"
-          mkdir -p "$PKG/lib/systemd/user"
-          mkdir -p "$PKG/DEBIAN"
+          mkdir -p "$PKG/usr/local/bin" "$PKG/lib/systemd/user" "$PKG/DEBIAN"
 
           cp "target/$TARGET/release/btx"         "$PKG/usr/local/bin/btx"
           cp "target/$TARGET/release/btx-connect" "$PKG/usr/local/bin/btx-connect"
 
-          cat > "$PKG/lib/systemd/user/btx-connect.service" <<'EOF'
-[Unit]
-Description=btx connect trusted Bluetooth devices at startup
-After=bluetooth.target graphical-session.target
-Wants=bluetooth.target
+          printf '[Unit]\nDescription=btx connect trusted Bluetooth devices at startup\nAfter=bluetooth.target graphical-session.target\nWants=bluetooth.target\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/btx-connect\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=graphical-session.target\n' \
+            > "$PKG/lib/systemd/user/btx-connect.service"
 
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/btx-connect
-StandardOutput=journal
-StandardError=journal
+          printf 'Package: btx\nVersion: %s\nArchitecture: %s\nMaintainer: SubNader <subnader@gmail.com>\nDescription: Terminal UI for managing Bluetooth devices on Linux\nDepends: dbus\n' \
+            "$VERSION" "$ARCH" > "$PKG/DEBIAN/control"
 
-[Install]
-WantedBy=graphical-session.target
-EOF
-
-          cat > "$PKG/DEBIAN/control" <<EOF
-Package: btx
-Version: $VERSION
-Architecture: $ARCH
-Maintainer: SubNader <subnader@gmail.com>
-Description: Terminal UI for managing Bluetooth devices on Linux
-Depends: dbus
-EOF
-
-          cat > "$PKG/DEBIAN/postinst" <<'EOF'
-#!/bin/sh
-set -e
-if [ "$1" = "configure" ]; then
-  systemctl --global enable btx-connect.service || true
-fi
-EOF
+          printf '#!/bin/sh\nset -e\nif [ "$1" = "configure" ]; then\n  systemctl --global enable btx-connect.service || true\nfi\n' \
+            > "$PKG/DEBIAN/postinst"
           chmod 755 "$PKG/DEBIAN/postinst"
 
-          cat > "$PKG/DEBIAN/prerm" <<'EOF'
-#!/bin/sh
-set -e
-if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
-  systemctl --global disable btx-connect.service || true
-fi
-EOF
+          printf '#!/bin/sh\nset -e\nif [ "$1" = "remove" ] || [ "$1" = "purge" ]; then\n  systemctl --global disable btx-connect.service || true\nfi\n' \
+            > "$PKG/DEBIAN/prerm"
           chmod 755 "$PKG/DEBIAN/prerm"
 
           dpkg-deb --build "$PKG"
@@ -126,8 +94,7 @@ EOF
 
       - name: Read version
         id: version
-        run: |
-          echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')" >> "$GITHUB_OUTPUT"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -138,15 +105,12 @@ EOF
         run: |
           VERSION=${{ steps.version.outputs.version }}
           mkdir -p release
-
-          cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx          release/btx-x86_64
-          cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx-connect   release/btx-connect-x86_64
-          cp dist/dist-arm64/target/aarch64-unknown-linux-gnu/release/btx          release/btx-aarch64
-          cp dist/dist-arm64/target/aarch64-unknown-linux-gnu/release/btx-connect   release/btx-connect-aarch64
+          cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx         release/btx-x86_64
+          cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx-connect  release/btx-connect-x86_64
+          cp dist/dist-arm64/target/aarch64-unknown-linux-gnu/release/btx         release/btx-aarch64
+          cp dist/dist-arm64/target/aarch64-unknown-linux-gnu/release/btx-connect  release/btx-connect-aarch64
           cp "dist/dist-amd64/btx_${VERSION}_amd64.deb" release/
           cp "dist/dist-arm64/btx_${VERSION}_arm64.deb" release/
-
-          ls -lh release/
 
       - name: Delete existing release if present
         env:
