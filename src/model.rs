@@ -1,3 +1,5 @@
+use tokio::sync::oneshot;
+
 use ratatui::style::Color;
 use ratatui::widgets::ListState;
 
@@ -150,6 +152,22 @@ pub enum Popup {
     Confirm { device_idx: usize, action: DeviceAction },
     Working { device_idx: usize, action: DeviceAction },
     Message { text: String, ok: bool },
+    /// Agent asks user to type a PIN code (legacy pairing).
+    PinInput { device: String, input: String },
+    /// Agent asks user to type a numeric passkey.
+    PasskeyInput { device: String, input: String },
+    /// Agent displays a passkey for the user to confirm on the remote device.
+    ConfirmPasskey { device: String, passkey: u32 },
+    /// Agent displays a passkey/PIN the user must type on the remote device.
+    DisplayPasskey { device: String, passkey: String },
+}
+
+/// Pending reply channels from the agent, kept alive until the user responds.
+pub enum AgentReply {
+    PinCode(oneshot::Sender<Result<String, ()>>),
+    Passkey(oneshot::Sender<Result<u32, ()>>),
+    Confirm(oneshot::Sender<Result<(), ()>>),
+    Display(oneshot::Sender<()>),
 }
 
 pub struct App {
@@ -162,6 +180,7 @@ pub struct App {
     pub adapter_name: Option<String>,
     pub adapter_address: Option<String>,
     pub scanning: bool,
+    pub agent_reply: Option<AgentReply>,
 }
 
 impl App {
@@ -178,6 +197,7 @@ impl App {
             adapter_name: None,
             adapter_address: None,
             scanning: false,
+            agent_reply: None,
         }
     }
 

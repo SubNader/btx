@@ -26,15 +26,28 @@ pub fn render_header(
 
     let inner = area.inner(Margin { horizontal: 2, vertical: 0 });
 
-    let status_tag = if let Popup::Working { action, .. } = popup {
-        Span::styled(
+    let status_tag = match popup {
+        Popup::Working { action, .. } => Span::styled(
             format!("  {}  {}…", action.emoji(), action.label()),
             Style::default().fg(action.accent()).add_modifier(Modifier::BOLD),
-        )
-    } else if scanning {
-        Span::styled("  📡 scanning…", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD))
-    } else {
-        Span::raw("")
+        ),
+        Popup::PinInput { .. } | Popup::PasskeyInput { .. } => Span::styled(
+            "  🔑  authentication required",
+            Style::default().fg(BLUE).add_modifier(Modifier::BOLD),
+        ),
+        Popup::ConfirmPasskey { .. } => Span::styled(
+            "  🔐  confirm passkey",
+            Style::default().fg(TEAL).add_modifier(Modifier::BOLD),
+        ),
+        Popup::DisplayPasskey { .. } => Span::styled(
+            "  📟  type on device",
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        ),
+        _ if scanning => Span::styled(
+            "  📡 scanning…",
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        ),
+        _ => Span::raw(""),
     };
 
     let title_line = Line::from(vec![
@@ -44,7 +57,7 @@ pub fn render_header(
         status_tag,
     ]);
 
-    let subtitle_line = if let Popup::Working { .. } = popup {
+    let subtitle_line = if matches!(popup, Popup::Working { .. }) {
         Line::from(Span::styled(
             "   please wait…",
             Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC),

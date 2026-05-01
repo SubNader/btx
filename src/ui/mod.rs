@@ -17,7 +17,10 @@ use crate::palette::*;
 use body::render_body;
 use footer::render_footer;
 use header::{render_empty, render_error, render_header, render_loading};
-use popups::{render_action_menu, render_confirm_popup, render_message_popup};
+use popups::{
+    render_action_menu, render_confirm_popup, render_confirm_passkey,
+    render_display_passkey, render_message_popup, render_pin_input,
+};
 
 pub fn ui(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
@@ -66,6 +69,22 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         Popup::Message { text, ok } => {
             let (text, ok) = (text.clone(), *ok);
             render_message_popup(frame, area, &text, ok);
+        }
+        Popup::PinInput { device, input } => {
+            let (device, input) = (device.clone(), input.clone());
+            render_pin_input(frame, area, &device, &input, false);
+        }
+        Popup::PasskeyInput { device, input } => {
+            let (device, input) = (device.clone(), input.clone());
+            render_pin_input(frame, area, &device, &input, true);
+        }
+        Popup::ConfirmPasskey { device, passkey } => {
+            let (device, passkey) = (device.clone(), *passkey);
+            render_confirm_passkey(frame, area, &device, passkey);
+        }
+        Popup::DisplayPasskey { device, passkey } => {
+            let (device, passkey) = (device.clone(), passkey.clone());
+            render_display_passkey(frame, area, &device, &passkey);
         }
         Popup::None => {}
     }

@@ -42,6 +42,17 @@ pub fn render_footer(frame: &mut Frame, area: Rect, popup: &Popup, scanning: boo
         Popup::Working { .. } => vec![
             Span::styled("  please wait…", Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC)),
         ],
+        Popup::PinInput { .. } | Popup::PasskeyInput { .. } => vec![
+            kb("Enter"), sep("confirm"), pad(),
+            kb("Esc"), sep("cancel"),
+        ],
+        Popup::ConfirmPasskey { .. } => vec![
+            kb("y / Enter"), sep("yes"), pad(),
+            kb("n / Esc"), sep("no"),
+        ],
+        Popup::DisplayPasskey { .. } => vec![
+            kb("Enter"), sep("done"),
+        ],
         _ => vec![
             kb("y / Enter"), sep("confirm"), pad(),
             kb("n / Esc"), sep("cancel"),

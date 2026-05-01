@@ -7,18 +7,21 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
+use tokio::sync::mpsc;
 use zbus::Connection;
 
+mod agent;
 mod bluez;
 mod model;
 mod palette;
 mod ui;
 
+use agent::{AgentRequest, register_agent};
 use bluez::{
     AdapterProxy, connect_device, disconnect_device, fetch_devices, find_adapter_path,
     pair_device, remove_device, set_trusted, start_discovery, stop_discovery,
 };
-use model::{App, DeviceAction, Popup, available_actions};
+use model::{AgentReply, App, DeviceAction, Popup, available_actions};
 use ui::ui;
 
 #[tokio::main]
@@ -31,6 +34,10 @@ async fn main() -> Result<()> {
 
     let conn = Connection::system().await.context("Cannot connect to D-Bus system bus")?;
     let mut app = App::new();
+
+    // Start the BlueZ agent so we can handle PIN/passkey requests during pairing.
+    let (agent_tx, mut agent_rx) = mpsc::unbounded_channel::<AgentRequest>();
+    let _agent_conn = register_agent(agent_tx).await.ok();
 
     terminal.draw(|f| ui(f, &mut app))?;
 
@@ -53,7 +60,6 @@ async fn main() -> Result<()> {
                 if msg.contains("Already") || msg.contains("InProgress") {
                     app.scanning = true;
                 }
-                // Any other error: silently skip auto-scan; user can still press 's' manually
             }
         }
         app.adapter_path = Some(path);
@@ -61,6 +67,11 @@ async fn main() -> Result<()> {
 
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
+
+        // Drain any pending agent requests before blocking on input.
+        while let Ok(req) = agent_rx.try_recv() {
+            handle_agent_request(&mut app, req);
+        }
 
         let poll_ms = if app.scanning { 1000 } else { 150 };
 
@@ -215,16 +226,19 @@ async fn main() -> Result<()> {
                                 }
                                 .await;
 
-                                if let Ok(devs) = fetch_devices(&conn).await {
-                                    let old = app.list_state.selected().unwrap_or(0);
-                                    app.devices = devs;
-                                    app.list_state.select(Some(old.min(app.devices.len().saturating_sub(1))));
+                                // During pairing the agent may have set a popup (PinInput etc).
+                                // Only overwrite with a result message if we're still in Working state.
+                                if matches!(app.popup, Popup::Working { .. }) {
+                                    if let Ok(devs) = fetch_devices(&conn).await {
+                                        let old = app.list_state.selected().unwrap_or(0);
+                                        app.devices = devs;
+                                        app.list_state.select(Some(old.min(app.devices.len().saturating_sub(1))));
+                                    }
+                                    app.popup = match result {
+                                        Ok(msg)  => Popup::Message { text: msg, ok: true },
+                                        Err(e)   => Popup::Message { text: e.to_string(), ok: false },
+                                    };
                                 }
-
-                                app.popup = match result {
-                                    Ok(msg)  => Popup::Message { text: msg, ok: true },
-                                    Err(e)   => Popup::Message { text: e.to_string(), ok: false },
-                                };
                             } else {
                                 app.popup = Popup::None;
                             }
@@ -238,7 +252,97 @@ async fn main() -> Result<()> {
 
                 Popup::Message { .. } => { app.popup = Popup::None; }
 
-                Popup::Working { .. } => {}
+                Popup::Working { .. } => {
+                    // While working, still drain agent requests so they can replace this popup.
+                    while let Ok(req) = agent_rx.try_recv() {
+                        handle_agent_request(&mut app, req);
+                    }
+                }
+
+                Popup::PinInput { .. } => {
+                    let Popup::PinInput { device, input } = &app.popup else { unreachable!() };
+                    let device = device.clone();
+                    let mut input = input.clone();
+                    match key.code {
+                        KeyCode::Char(c) if c.is_ascii_alphanumeric() || c == '-' => {
+                            if input.len() < 16 { input.push(c); }
+                            app.popup = Popup::PinInput { device, input };
+                        }
+                        KeyCode::Backspace => {
+                            input.pop();
+                            app.popup = Popup::PinInput { device, input };
+                        }
+                        KeyCode::Enter => {
+                            if let Some(AgentReply::PinCode(tx)) = app.agent_reply.take() {
+                                let _ = tx.send(Ok(input));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        KeyCode::Esc => {
+                            if let Some(AgentReply::PinCode(tx)) = app.agent_reply.take() {
+                                let _ = tx.send(Err(()));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        _ => {}
+                    }
+                }
+
+                Popup::PasskeyInput { .. } => {
+                    let Popup::PasskeyInput { device, input } = &app.popup else { unreachable!() };
+                    let device = device.clone();
+                    let mut input = input.clone();
+                    match key.code {
+                        KeyCode::Char(c) if c.is_ascii_digit() => {
+                            if input.len() < 6 { input.push(c); }
+                            app.popup = Popup::PasskeyInput { device, input };
+                        }
+                        KeyCode::Backspace => {
+                            input.pop();
+                            app.popup = Popup::PasskeyInput { device, input };
+                        }
+                        KeyCode::Enter => {
+                            if let Some(AgentReply::Passkey(tx)) = app.agent_reply.take() {
+                                let pk = input.parse::<u32>().unwrap_or(0);
+                                let _ = tx.send(Ok(pk));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        KeyCode::Esc => {
+                            if let Some(AgentReply::Passkey(tx)) = app.agent_reply.take() {
+                                let _ = tx.send(Err(()));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        _ => {}
+                    }
+                }
+
+                Popup::ConfirmPasskey { .. } => {
+                    match key.code {
+                        KeyCode::Char('y') | KeyCode::Enter => {
+                            if let Some(AgentReply::Confirm(tx)) = app.agent_reply.take() {
+                                let _ = tx.send(Ok(()));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        KeyCode::Char('n') | KeyCode::Esc => {
+                            if let Some(AgentReply::Confirm(tx)) = app.agent_reply.take() {
+                                let _ = tx.send(Err(()));
+                            }
+                            app.popup = Popup::None;
+                        }
+                        _ => {}
+                    }
+                }
+
+                Popup::DisplayPasskey { .. } => {
+                    // Any key dismisses; the reply channel just unblocks the agent.
+                    if let Some(AgentReply::Display(tx)) = app.agent_reply.take() {
+                        let _ = tx.send(());
+                    }
+                    app.popup = Popup::None;
+                }
             }
         }
     }
@@ -253,4 +357,34 @@ async fn main() -> Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
     Ok(())
+}
+
+fn handle_agent_request(app: &mut App, req: AgentRequest) {
+    match req {
+        AgentRequest::RequestPinCode { device, reply } => {
+            app.agent_reply = Some(AgentReply::PinCode(reply));
+            app.popup = Popup::PinInput { device, input: String::new() };
+        }
+        AgentRequest::RequestPasskey { device, reply } => {
+            app.agent_reply = Some(AgentReply::Passkey(reply));
+            app.popup = Popup::PasskeyInput { device, input: String::new() };
+        }
+        AgentRequest::DisplayPasskey { device, passkey, reply } => {
+            app.agent_reply = Some(AgentReply::Display(reply));
+            app.popup = Popup::DisplayPasskey { device, passkey: format!("{:06}", passkey) };
+        }
+        AgentRequest::DisplayPinCode { device, pin, reply } => {
+            app.agent_reply = Some(AgentReply::Display(reply));
+            app.popup = Popup::DisplayPasskey { device, passkey: pin };
+        }
+        AgentRequest::RequestConfirmation { device, passkey, reply } => {
+            app.agent_reply = Some(AgentReply::Confirm(reply));
+            app.popup = Popup::ConfirmPasskey { device, passkey };
+        }
+        AgentRequest::RequestAuthorization { device, reply } => {
+            // Auto-approve authorization (user already chose to pair).
+            let _ = reply.send(Ok(()));
+            let _ = device;
+        }
+    }
 }

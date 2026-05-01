@@ -110,6 +110,121 @@ pub fn render_confirm_popup(frame: &mut Frame, area: Rect, dev: &BtDevice, actio
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
+pub fn render_pin_input(frame: &mut Frame, area: Rect, device: &str, input: &str, numeric: bool) {
+    let popup_area = centered_rect(52, 10, area);
+    frame.render_widget(Clear, popup_area);
+
+    let (title, hint) = if numeric {
+        ("  🔢  enter passkey  ", "6-digit number shown on device")
+    } else {
+        ("  🔑  enter PIN code  ", "check device label or use 0000 / 1234")
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(BLUE))
+        .style(Style::default().bg(PANEL_BG))
+        .title(Line::from(Span::styled(title, Style::default().fg(BLUE).add_modifier(Modifier::BOLD))));
+    frame.render_widget(block, popup_area);
+
+    let inner = popup_area.inner(Margin { horizontal: 3, vertical: 1 });
+
+    let masked: String = if numeric {
+        format!("{:_<6}", input)
+    } else {
+        input.to_string()
+    };
+
+    let lines = Text::from(vec![
+        Line::from(""),
+        Line::from(Span::styled(truncate(device, 44), Style::default().fg(FG_DIM))),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled(&masked, Style::default().fg(FG).add_modifier(Modifier::BOLD)),
+            Span::styled("  ", Style::default()),
+        ]),
+        Line::from(Span::styled(hint, Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC))),
+        Line::from(""),
+        Line::from(vec![kb("Enter"), Span::raw("  confirm    "), kb("Esc"), Span::raw("  cancel")]),
+    ]);
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+pub fn render_confirm_passkey(frame: &mut Frame, area: Rect, device: &str, passkey: u32) {
+    let popup_area = centered_rect(52, 10, area);
+    frame.render_widget(Clear, popup_area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(TEAL))
+        .style(Style::default().bg(PANEL_BG))
+        .title(Line::from(Span::styled(
+            "  🔐  confirm passkey  ",
+            Style::default().fg(TEAL).add_modifier(Modifier::BOLD),
+        )));
+    frame.render_widget(block, popup_area);
+
+    let inner = popup_area.inner(Margin { horizontal: 3, vertical: 1 });
+
+    let lines = Text::from(vec![
+        Line::from(""),
+        Line::from(Span::styled(truncate(device, 44), Style::default().fg(FG_DIM))),
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {:06}  ", passkey),
+            Style::default().fg(TEAL).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "does this match what's shown on the device?",
+            Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC),
+        )),
+        Line::from(""),
+        Line::from(vec![kb("y / Enter"), Span::raw("  yes    "), kb("n / Esc"), Span::raw("  no")]),
+    ]);
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+pub fn render_display_passkey(frame: &mut Frame, area: Rect, device: &str, passkey: &str) {
+    let popup_area = centered_rect(52, 10, area);
+    frame.render_widget(Clear, popup_area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(PURPLE))
+        .style(Style::default().bg(PANEL_BG))
+        .title(Line::from(Span::styled(
+            "  📟  type this on your device  ",
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        )));
+    frame.render_widget(block, popup_area);
+
+    let inner = popup_area.inner(Margin { horizontal: 3, vertical: 1 });
+
+    let lines = Text::from(vec![
+        Line::from(""),
+        Line::from(Span::styled(truncate(device, 44), Style::default().fg(FG_DIM))),
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {}  ", passkey),
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "type this code on the device, then press Enter",
+            Style::default().fg(FG_DIM).add_modifier(Modifier::ITALIC),
+        )),
+        Line::from(""),
+        Line::from(vec![kb("Enter"), Span::raw("  done")]),
+    ]);
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
 pub fn render_message_popup(frame: &mut Frame, area: Rect, text: &str, ok: bool) {
     let popup_area = centered_rect(56, 7, area);
     frame.render_widget(Clear, popup_area);
