@@ -1,4 +1,6 @@
-use anyhow::{Context, Result};
+use std::time::Duration;
+
+use anyhow::{Context, Result, anyhow};
 use zbus::{Connection, proxy};
 
 #[proxy(
@@ -157,7 +159,10 @@ pub async fn disconnect_device(conn: &Connection, path: &str) -> Result<()> {
 
 pub async fn pair_device(conn: &Connection, path: &str) -> Result<()> {
     let proxy = DeviceProxy::builder(conn).path(path)?.build().await?;
-    proxy.pair().await?;
+    tokio::time::timeout(Duration::from_secs(30), proxy.pair())
+        .await
+        .map_err(|_| anyhow!("pairing timed out — make sure the device is in pairing mode"))?
+        .map_err(|e| anyhow!("{e}"))?;
     Ok(())
 }
 

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
 use zbus::{Connection, proxy};
 
 #[proxy(
@@ -38,26 +37,59 @@ trait Device {
     fn connected(&self) -> zbus::Result<bool>;
 }
 
-async fn connect_trusted(conn: &Connection) -> Result<()> {
-    let manager = ObjectManagerProxy::new(conn)
-        .await
-        .context("Failed to connect to BlueZ")?;
+const CONNECT_TIMEOUT_SECS: u64 = 10;
 
-    let objects = manager
-        .get_managed_objects()
+async fn try_connect_one(conn: &Connection, path: &str) -> Result<(), String> {
+    let proxy = DeviceProxy::builder(conn)
+        .path(path)
+        .map_err(|e| e.to_string())?
+        .build()
         .await
-        .context("BlueZ returned no objects — is bluetoothd running?")?;
+        .map_err(|e| e.to_string())?;
 
-    let mut targets = Vec::new();
+    tokio::time::timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS), proxy.connect())
+        .await
+        .map_err(|_| format!("timed out after {CONNECT_TIMEOUT_SECS}s"))?
+        .map_err(|e| e.to_string())
+}
+
+async fn connect_trusted(conn: &Connection) {
+    let manager = match ObjectManagerProxy::new(conn).await {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("btx-connect: failed to reach BlueZ — {e}");
+            return;
+        }
+    };
+
+    let objects = match manager.get_managed_objects().await {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("btx-connect: bluetoothd not ready — {e}");
+            return;
+        }
+    };
+
+    let mut targets: Vec<(String, String, String)> = Vec::new();
 
     for (path, interfaces) in &objects {
         if !interfaces.contains_key("org.bluez.Device1") {
             continue;
         }
-        let proxy = DeviceProxy::builder(conn)
-            .path(path.as_ref())?
-            .build()
-            .await?;
+
+        let proxy = match DeviceProxy::builder(conn).path(path.as_ref()) {
+            Ok(b) => match b.build().await {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("btx-connect: skipping {path} — {e}");
+                    continue;
+                }
+            },
+            Err(e) => {
+                eprintln!("btx-connect: bad path {path} — {e}");
+                continue;
+            }
+        };
 
         let trusted   = proxy.trusted().await.unwrap_or(false);
         let paired    = proxy.paired().await.unwrap_or(false);
@@ -75,29 +107,25 @@ async fn connect_trusted(conn: &Connection) -> Result<()> {
 
     if targets.is_empty() {
         println!("btx-connect: no trusted devices to connect");
-        return Ok(());
+        return;
     }
 
     for (path, name, address) in targets {
-        print!("btx-connect: connecting {} ({}) … ", name, address);
-        let proxy = DeviceProxy::builder(conn).path(path.as_str())?.build().await?;
-        match proxy.connect().await {
+        print!("btx-connect: connecting {name} ({address}) … ");
+        match try_connect_one(conn, &path).await {
             Ok(()) => println!("ok"),
-            Err(e) => println!("failed: {}", e),
+            Err(e) => eprintln!("failed: {e}"),
         }
     }
-
-    Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     // Give bluetoothd a moment to settle after system boot
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    let conn = Connection::system()
-        .await
-        .context("Cannot connect to D-Bus system bus")?;
-
-    connect_trusted(&conn).await
+    match Connection::system().await {
+        Ok(conn) => connect_trusted(&conn).await,
+        Err(e) => eprintln!("btx-connect: cannot connect to D-Bus — {e}"),
+    }
 }

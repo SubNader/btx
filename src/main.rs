@@ -43,6 +43,22 @@ async fn main() -> Result<()> {
             app.adapter_name    = proxy.name().await.ok();
             app.adapter_address = proxy.address().await.ok();
         }
+        // Auto-start discovery on launch; ignore "Already discovering" and similar non-fatal errors
+        match start_discovery(&conn, &path).await {
+            Ok(()) => {
+                app.scanning = true;
+                app.popup = Popup::Scanning;
+            }
+            Err(e) => {
+                let msg = e.to_string();
+                // "Already discovering" means scan is already running — treat as success
+                if msg.contains("Already") || msg.contains("InProgress") {
+                    app.scanning = true;
+                    app.popup = Popup::Scanning;
+                }
+                // Any other error: silently skip auto-scan; user can still press 's' manually
+            }
+        }
         app.adapter_path = Some(path);
     }
 
@@ -87,14 +103,22 @@ async fn main() -> Result<()> {
                     }
 
                     KeyCode::Char('s') => {
-                        if let Some(ref adapter) = app.adapter_path.clone() {
+                        if app.scanning {
+                            app.popup = Popup::Scanning;
+                        } else if let Some(ref adapter) = app.adapter_path.clone() {
                             match start_discovery(&conn, adapter).await {
                                 Ok(()) => {
                                     app.scanning = true;
                                     app.popup = Popup::Scanning;
                                 }
                                 Err(e) => {
-                                    app.popup = Popup::Message { text: format!("scan failed: {}", e), ok: false };
+                                    let msg = e.to_string();
+                                    if msg.contains("Already") || msg.contains("InProgress") {
+                                        app.scanning = true;
+                                        app.popup = Popup::Scanning;
+                                    } else {
+                                        app.popup = Popup::Message { text: format!("scan failed: {e}"), ok: false };
+                                    }
                                 }
                             }
                         } else {
@@ -151,37 +175,40 @@ async fn main() -> Result<()> {
                                 app.popup = Popup::Working { device_idx: idx, action };
                                 terminal.draw(|f| ui(f, &mut app))?;
 
-                                let result: Result<String> = match action {
-                                    DeviceAction::Connect => {
-                                        connect_device(&conn, &path).await?;
-                                        Ok(format!("🔗 {} connected", name))
-                                    }
-                                    DeviceAction::Disconnect => {
-                                        disconnect_device(&conn, &path).await?;
-                                        Ok(format!("⏏️  {} disconnected", name))
-                                    }
-                                    DeviceAction::Pair => {
-                                        pair_device(&conn, &path).await?;
-                                        Ok(format!("🤝 {} paired successfully", name))
-                                    }
-                                    DeviceAction::Remove => {
-                                        if let Some(ref ap) = adapter_path {
-                                            remove_device(&conn, ap, &path).await?;
-                                            Ok(format!("🗑️  {} removed", name))
-                                        } else {
-                                            anyhow::bail!("no adapter path available")
+                                let result: Result<String> = async {
+                                    match action {
+                                        DeviceAction::Connect => {
+                                            connect_device(&conn, &path).await?;
+                                            Ok(format!("🔗 {} connected", name))
+                                        }
+                                        DeviceAction::Disconnect => {
+                                            disconnect_device(&conn, &path).await?;
+                                            Ok(format!("⏏️  {} disconnected", name))
+                                        }
+                                        DeviceAction::Pair => {
+                                            pair_device(&conn, &path).await?;
+                                            Ok(format!("🤝 {} paired successfully", name))
+                                        }
+                                        DeviceAction::Remove => {
+                                            if let Some(ref ap) = adapter_path {
+                                                remove_device(&conn, ap, &path).await?;
+                                                Ok(format!("🗑️  {} removed", name))
+                                            } else {
+                                                anyhow::bail!("no adapter path available")
+                                            }
+                                        }
+                                        DeviceAction::ToggleAutoconnect => {
+                                            let new_val = !trusted;
+                                            set_trusted(&conn, &path, new_val).await?;
+                                            if new_val {
+                                                Ok(format!("✦ {} will autoconnect on startup", name))
+                                            } else {
+                                                Ok(format!("· {} autoconnect disabled", name))
+                                            }
                                         }
                                     }
-                                    DeviceAction::ToggleAutoconnect => {
-                                        let new_val = !trusted;
-                                        set_trusted(&conn, &path, new_val).await?;
-                                        if new_val {
-                                            Ok(format!("✦ {} will autoconnect on startup", name))
-                                        } else {
-                                            Ok(format!("· {} autoconnect disabled", name))
-                                        }
-                                    }
-                                };
+                                }
+                                .await;
 
                                 if let Ok(devs) = fetch_devices(&conn).await {
                                     let old = app.list_state.selected().unwrap_or(0);
