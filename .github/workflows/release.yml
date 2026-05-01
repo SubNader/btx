@@ -8,9 +8,12 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.deb_arch }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,33 +26,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
+      - name: Install cross tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu dpkg-dev
 
       - name: Build
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Get version
+      - name: Read version
         id: version
         run: |
-          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
 
       - name: Package .deb
         run: |
+          set -e
           VERSION=${{ steps.version.outputs.version }}
           ARCH=${{ matrix.deb_arch }}
-          PKG="btx_${VERSION}_${ARCH}"
           TARGET=${{ matrix.target }}
+          PKG="btx_${VERSION}_${ARCH}"
 
           mkdir -p "$PKG/usr/local/bin"
           mkdir -p "$PKG/lib/systemd/user"
@@ -58,7 +60,7 @@ jobs:
           cp "target/$TARGET/release/btx"         "$PKG/usr/local/bin/btx"
           cp "target/$TARGET/release/btx-connect" "$PKG/usr/local/bin/btx-connect"
 
-          cat > "$PKG/lib/systemd/user/btx-connect.service" <<EOF
+          cat > "$PKG/lib/systemd/user/btx-connect.service" <<'EOF'
 [Unit]
 Description=btx connect trusted Bluetooth devices at startup
 After=bluetooth.target graphical-session.target
@@ -78,7 +80,7 @@ EOF
 Package: btx
 Version: $VERSION
 Architecture: $ARCH
-Maintainer: SubNader
+Maintainer: SubNader <subnader@gmail.com>
 Description: Terminal UI for managing Bluetooth devices on Linux
 Depends: dbus
 EOF
@@ -102,6 +104,7 @@ EOF
           chmod 755 "$PKG/DEBIAN/prerm"
 
           dpkg-deb --build "$PKG"
+          mv "${PKG}.deb" "btx_${VERSION}_${ARCH}.deb"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -117,27 +120,24 @@ EOF
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version
+      - name: Read version
         id: version
         run: |
-          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
 
-      - name: Stage release files
+      - name: Stage files
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          mkdir release
+          mkdir -p release
 
           cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx          release/btx-x86_64
           cp dist/dist-amd64/target/x86_64-unknown-linux-gnu/release/btx-connect   release/btx-connect-x86_64
@@ -146,11 +146,23 @@ EOF
           cp "dist/dist-amd64/btx_${VERSION}_amd64.deb" release/
           cp "dist/dist-arm64/btx_${VERSION}_arm64.deb" release/
 
-      - name: Publish rolling release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          files: release/*
-          generate_release_notes: true
-          make_latest: true
+          ls -lh release/
+
+      - name: Delete existing release if present
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          gh release delete "v${VERSION}" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+          git push origin ":refs/tags/v${VERSION}" 2>/dev/null || true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          gh release create "v${VERSION}" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "v${VERSION}" \
+            --generate-notes \
+            --latest
